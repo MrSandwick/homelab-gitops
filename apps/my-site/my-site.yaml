@@ -1,0 +1,33 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: my-site
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: my-site
+  template:
+    metadata:
+      labels:
+        app: my-site
+    spec:
+      nodeSelector:
+        kubernetes.io/hostname: optiplex-worker
+      containers:
+        - name: my-site
+          image: docker.io/library/my-site:v1
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: my-site
+spec:
+  selector:
+    app: my-site
+  ports:
+    - port: 80
+      targetPort: 80
