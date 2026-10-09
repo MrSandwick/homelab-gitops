@@ -12,12 +12,9 @@ spec:
       labels:
         app: my-site
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: optiplex-worker
       containers:
         - name: my-site
-          image: docker.io/library/my-site:v1
-          imagePullPolicy: Never
+          image: ghcr.io/mrsandwick/my-site:
           ports:
             - containerPort: 80
 ---
