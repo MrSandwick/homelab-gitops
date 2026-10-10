@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: my-site
-          image: ghcr.io/mrsandwick/my-site:9c0db67bbe086b18a2fbd1ef5468003c0041dcfc
+          image: ghcr.io/mrsandwick/my-site:69bc2a98bf0653d95142e70977991f290f4ce71c
           ports:
             - containerPort: 80
 ---
