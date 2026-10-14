@@ -1,0 +1,30 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: my-site-alerts
+  namespace: monitoring
+  labels:
+    # matches the ruleSelector of the Prometheus in this cluster
+    release: prometheus
+spec:
+  groups:
+    - name: my-site
+      rules:
+        - alert: MySiteDown
+          # no available replica at all (the "or vector(0)" covers a missing metric)
+          expr: (sum(kube_deployment_status_replicas_available{namespace="default", deployment="my-site"}) or vector(0)) < 1
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "my-site has no available pod"
+            description: "Deployment default/my-site has had no available replica for 5 minutes."
+        - alert: MySiteDegraded
+          # fewer available replicas than desired
+          expr: kube_deployment_status_replicas_available{namespace="default", deployment="my-site"} < kube_deployment_spec_replicas{namespace="default", deployment="my-site"}
+          for: 10m
+          labels:
+            severity: warning
+          annotations:
+            summary: "my-site is running with fewer pods than desired"
+            description: "Deployment default/my-site has had fewer available replicas than desired for 10 minutes."
