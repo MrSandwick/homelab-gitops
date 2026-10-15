@@ -34,6 +34,14 @@ alertmanager:
     # mounted at /etc/alertmanager/secrets/alertmanager-slack/
     secrets:
       - alertmanager-slack
+    storage:
+      volumeClaimTemplate:
+        spec:
+          storageClassName: local-path
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 1Gi
   config:
     global:
       resolve_timeout: 5m
