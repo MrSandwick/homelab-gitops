@@ -1,0 +1,7 @@
+# Binds the class name "envoy" to the Envoy Gateway controller.
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: envoy
+spec:
+  controllerName: gateway.envoyproxy.io/gatewayclass-controller
