@@ -1,0 +1,63 @@
+# Second Alloy instance: reads logs from Kafka and pushes them to Loki.
+# Delivery: offsets are committed only after the hand-off, and loki.write
+# retries forever, so Kafka acts as a buffer while Loki is down.
+controller:
+  type: deployment
+  replicas: 1
+
+alloy:
+  configMap:
+    content: |
+      // 1. Read OTLP-encoded log records from the Kafka topic "logs"
+      otelcol.receiver.kafka "default" {
+        brokers          = ["homelab-kafka-bootstrap.kafka.svc.cluster.local:9092"]
+        protocol_version = "2.0.0"
+        group_id         = "alloy-consumer"
+        initial_offset   = "earliest"
+
+        // commit the offset only after the message was forwarded
+        message_marking {
+          after_execution = true
+        }
+
+        logs {
+          topics   = ["logs"]
+          encoding = "otlp_proto"
+        }
+
+        output {
+          logs = [otelcol.processor.attributes.labels.input]
+        }
+      }
+
+      // 2. Tell the Loki exporter which log attributes must become Loki labels
+      otelcol.processor.attributes "labels" {
+        action {
+          key    = "loki.attribute.labels"
+          action = "insert"
+          value  = "namespace, pod, container, node, job, instance"
+        }
+
+        output {
+          logs = [otelcol.processor.batch.default.input]
+        }
+      }
+
+      // 3. Group records into batches before sending
+      otelcol.processor.batch "default" {
+        output {
+          logs = [otelcol.exporter.loki.default.input]
+        }
+      }
+
+      // 4. Convert OTLP back to Loki entries (with labels) and push to Loki
+      otelcol.exporter.loki "default" {
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url                 = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+          max_backoff_retries = 0   // retry forever while Loki is down
+        }
+      }

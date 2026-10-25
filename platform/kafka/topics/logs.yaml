@@ -1,0 +1,13 @@
+# Buffer between the log collector (Alloy) and Loki.
+apiVersion: kafka.strimzi.io/v1
+kind: KafkaTopic
+metadata:
+  name: logs
+  namespace: kafka
+  labels:
+    strimzi.io/cluster: homelab
+spec:
+  partitions: 3
+  replicas: 1
+  config:
+    retention.ms: 259200000     # keep messages for 3 days

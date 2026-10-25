@@ -38,11 +38,23 @@ alloy:
 
       loki.source.kubernetes "pods" {
         targets    = discovery.relabel.pods.output
-        forward_to = [loki.write.default.receiver]
+        forward_to = [otelcol.receiver.loki.kafka.receiver]
       }
 
-      loki.write "default" {
-        endpoint {
-          url = "http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push"
+
+      // Kafka branch: convert Loki log entries to OTLP and publish them to Kafka
+      otelcol.receiver.loki "kafka" {
+        output {
+          logs = [otelcol.exporter.kafka.default.input]
+        }
+      }
+
+      otelcol.exporter.kafka "default" {
+        brokers          = ["homelab-kafka-bootstrap.kafka.svc.cluster.local:9092"]
+        protocol_version = "2.0.0"
+
+        logs {
+          topic    = "logs"
+          encoding = "otlp_proto"
         }
       }
