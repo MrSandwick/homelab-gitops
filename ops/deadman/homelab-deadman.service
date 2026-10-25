@@ -1,0 +1,6 @@
+[Unit]
+Description=Homelab dead man's switch (API, nodes, Watchdog)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/homelab-deadman.sh

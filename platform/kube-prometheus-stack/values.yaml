@@ -18,6 +18,8 @@ grafana:
 
 prometheus:
   prometheusSpec:
+    externalLabels:
+      cluster: homelab
     retention: 15d
     retentionSize: 8GB
     storageSpec:
@@ -30,6 +32,23 @@ prometheus:
               storage: 10Gi
 
 alertmanager:
+  templateFiles:
+    slack.tmpl: |-
+      {{ define "slack.homelab.title" -}}
+      {{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}🔴{{ else }}🟠{{ end }}{{ else }}✅{{ end }} [{{ or .CommonLabels.cluster "unknown-cluster" }}] {{ .CommonLabels.alertname }}{{ if gt (len .Alerts) 1 }} ({{ len .Alerts }}){{ end }}{{ if eq .Status "resolved" }} — resolved{{ end }}
+      {{- end }}
+
+      {{ define "slack.homelab.text" -}}
+      {{ range .Alerts -}}
+      *{{ if .Annotations.summary }}{{ .Annotations.summary }}{{ else }}{{ .Labels.alertname }}{{ end }}*
+      {{ if .Annotations.description }}{{ .Annotations.description }}
+      {{ end -}}
+      • Severity: `{{ .Labels.severity }}`{{ if .Labels.namespace }}  • Namespace: `{{ .Labels.namespace }}`{{ end }}{{ if .Labels.pod }}  • Pod: `{{ .Labels.pod }}`{{ end }}{{ if .Labels.node }}  • Node: `{{ .Labels.node }}`{{ end }}
+      • Since: {{ .StartsAt.Format "2006-01-02 15:04 MST" }}{{ if eq .Status "resolved" }}  • Resolved: {{ .EndsAt.Format "2006-01-02 15:04 MST" }}{{ end }}
+      {{ if .Annotations.runbook_url }}• Runbook: {{ .Annotations.runbook_url }}
+      {{ end }}
+      {{ end -}}
+      {{- end }}
   alertmanagerSpec:
     # mounted at /etc/alertmanager/secrets/alertmanager-slack/
     secrets:
@@ -80,6 +99,9 @@ alertmanager:
         slack_configs:
           - api_url_file: /etc/alertmanager/secrets/alertmanager-slack/webhook-url
             send_resolved: true
+            color: '{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}{{ else }}good{{ end }}'
+            title: '{{ template "slack.homelab.title" . }}'
+            text: '{{ template "slack.homelab.text" . }}'
             title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
             text: |-
               {{ range .Alerts }}*{{ .Labels.severity }}* {{ .Annotations.summary }}
