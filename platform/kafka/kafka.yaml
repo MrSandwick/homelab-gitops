@@ -37,6 +37,8 @@ metadata:
 spec:
   kafka:
     version: 4.3.1
+    metricsConfig:
+      type: strimziMetricsReporter
     listeners:
       - name: plain
         port: 9092
@@ -56,3 +58,6 @@ spec:
   entityOperator:
     topicOperator: {}
     userOperator: {}
+  kafkaExporter:
+    topicRegex: ".*"
+    groupRegex: ".*"
