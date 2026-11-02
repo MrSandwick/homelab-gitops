@@ -1,4 +1,4 @@
-# HTTPS: the site itself. Attaches to the HTTPS listener only.
+# HTTPS: the site itself, on the apex name. Attaches to the apex HTTPS listener only.
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -8,12 +8,32 @@ spec:
   parentRefs:
     - name: public
       namespace: envoy-gateway-system
-      sectionName: https-new
-  hostnames: ["new.bturatov.me"]
+      sectionName: https-apex
+  hostnames: ["bturatov.me"]
   rules:
     - backendRefs:
         - name: web
           port: 80
+---
+# www -> apex
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portfolio-www-redirect
+  namespace: portfolio
+spec:
+  parentRefs:
+    - name: public
+      namespace: envoy-gateway-system
+      sectionName: https-www
+  hostnames: ["www.bturatov.me"]
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            hostname: bturatov.me
+            statusCode: 301
 ---
 # HTTP: redirect everything to HTTPS. cert-manager's temporary
 # /.well-known/acme-challenge route is more specific, so it still wins on port 80.
@@ -27,7 +47,7 @@ spec:
     - name: public
       namespace: envoy-gateway-system
       sectionName: http
-  hostnames: ["new.bturatov.me"]
+  hostnames: ["bturatov.me", "www.bturatov.me"]
   rules:
     - filters:
         - type: RequestRedirect
