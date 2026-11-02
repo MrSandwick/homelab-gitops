@@ -31,7 +31,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: web
-          image: ghcr.io/mrsandwick/render-resume-web:23230b0e551037070a9c677ea8617664f411a87e
+          image: ghcr.io/mrsandwick/render-resume-web:57e6eb83a779f4d3cdab6dfe8580493737cdff2c
           ports:
             - containerPort: 8080
           securityContext:
