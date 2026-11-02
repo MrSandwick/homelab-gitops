@@ -33,7 +33,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
-          image: ghcr.io/mrsandwick/render-resume-api:bootstrap
+          image: ghcr.io/mrsandwick/render-resume-api:23230b0e551037070a9c677ea8617664f411a87e
           ports:
             - containerPort: 5050
           envFrom:
