@@ -4,7 +4,7 @@
 #
 # Critical steps: etcd snapshot, control-plane certificates, manifests.
 #   If one fails, the folder is renamed *-FAILED and never counts as a backup.
-# Optional step: Grafana data (needs the worker). A failure gives status PARTIAL.
+# Optional steps: Grafana data and MongoDB (both need the worker). A failure gives status PARTIAL.
 # Rotation always runs. PARTIAL and FAIL are reported to Slack directly.
 set -uo pipefail
 umask 077
@@ -92,10 +92,18 @@ POD
   return $rc
 }
 
+# 4b. MongoDB (portfolio): dump streamed out of the pod, using the app account (readWrite on that database)
+backup_mongo() {
+  kubectl -n portfolio exec mongo-0 -- sh -c 'mongodump --db portfolio --archive --gzip -u "$APP_USER" -p "$APP_PASS" --authenticationDatabase portfolio' > "$OUT/mongo-portfolio.archive.gz" && [ -s "$OUT/mongo-portfolio.archive.gz" ] && return 0
+  rm -f "$OUT/mongo-portfolio.archive.gz"
+  return 1
+}
+
 step critical "etcd snapshot"        backup_etcd
 step critical "certificates (pki)"   backup_pki
 step critical "manifests"            backup_manifests
 step optional "Grafana data"         backup_grafana
+step optional "MongoDB (portfolio)"  backup_mongo
 
 # result
 if [ ${#failed_critical[@]} -gt 0 ]; then
