@@ -33,7 +33,7 @@ spec:
         seccompProfile: {type: RuntimeDefault}
       containers:
         - name: api
-          image: ghcr.io/mrsandwick/render-resume-api:57e6eb83a779f4d3cdab6dfe8580493737cdff2c
+          image: ghcr.io/mrsandwick/render-resume-api:bootstrap
           ports:
             - containerPort: 5050
           envFrom:
@@ -44,7 +44,7 @@ spec:
             - {name: PORT, value: "5050"}
             # visitor -> Cloudflare -> Envoy -> nginx -> api
             - {name: TRUST_PROXY, value: "3"}
-            - {name: CORS_ORIGIN, value: "https://bturatov.me,https://new.bturatov.me"}
+            - {name: CORS_ORIGIN, value: "https://bturatov.me,https://www.bturatov.me"}
           securityContext:
             allowPrivilegeEscalation: false
             readOnlyRootFilesystem: true
