@@ -1,0 +1,40 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: public
+  namespace: envoy-gateway-system
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-staging
+spec:
+  gatewayClassName: envoy
+  infrastructure:
+    annotations:
+      metallb.universe.tf/loadBalancerIPs: 192.168.20.241
+    parametersRef:
+      group: gateway.envoyproxy.io
+      kind: EnvoyProxy
+      name: public-proxy
+  listeners:
+    - name: http
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              homelab/public-gateway: "allowed"
+    - name: https-new
+      protocol: HTTPS
+      port: 443
+      hostname: new.bturatov.me
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - name: new-bturatov-me-tls
+      allowedRoutes:
+        namespaces:
+          from: Selector
+          selector:
+            matchLabels:
+              homelab/public-gateway: "allowed"

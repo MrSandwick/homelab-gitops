@@ -1,0 +1,99 @@
+# MongoDB for the portfolio. Single replica, data on a local-path volume (OptiPlex worker).
+# Secrets (created by hand, never in git):
+#   mongo-root  keys: username, password            the root account, used only to bootstrap
+#   mongo-app   keys: username, password            the account the API uses (readWrite on db "portfolio")
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongo-init
+  namespace: portfolio
+data:
+  # Runs once, on the first start with an empty data directory.
+  01-app-user.js: |
+    db.getSiblingDB('portfolio').createUser({
+      user: process.env.APP_USER,
+      pwd: process.env.APP_PASS,
+      roles: [{ role: 'readWrite', db: 'portfolio' }],
+    })
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: portfolio
+spec:
+  clusterIP: None
+  selector: {app: mongo}
+  ports:
+    - name: mongo
+      port: 27017
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  namespace: portfolio
+spec:
+  serviceName: mongo
+  replicas: 1
+  selector:
+    matchLabels: {app: mongo}
+  template:
+    metadata:
+      labels: {app: mongo}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 999
+        runAsGroup: 999
+        fsGroup: 999
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: mongo
+          image: mongo:7
+          args: ["--wiredTigerCacheSizeGB=0.25", "--bind_ip_all"]
+          ports:
+            - containerPort: 27017
+          env:
+            - name: MONGO_INITDB_ROOT_USERNAME
+              valueFrom: {secretKeyRef: {name: mongo-root, key: username}}
+            - name: MONGO_INITDB_ROOT_PASSWORD
+              valueFrom: {secretKeyRef: {name: mongo-root, key: password}}
+            - name: APP_USER
+              valueFrom: {secretKeyRef: {name: mongo-app, key: username}}
+            - name: APP_PASS
+              valueFrom: {secretKeyRef: {name: mongo-app, key: password}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 100m, memory: 384Mi}
+            limits: {memory: 768Mi}
+          readinessProbe:
+            tcpSocket: {port: 27017}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: 27017}
+            initialDelaySeconds: 30
+            periodSeconds: 20
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+            - name: init
+              mountPath: /docker-entrypoint-initdb.d
+              readOnly: true
+      volumes:
+        - name: init
+          configMap:
+            name: mongo-init
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        storageClassName: local-path
+        resources:
+          requests:
+            storage: 5Gi
