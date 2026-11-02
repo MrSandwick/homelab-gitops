@@ -1,0 +1,36 @@
+# HTTPS: the site itself. Attaches to the HTTPS listener only.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portfolio
+  namespace: portfolio
+spec:
+  parentRefs:
+    - name: public
+      namespace: envoy-gateway-system
+      sectionName: https-new
+  hostnames: ["new.bturatov.me"]
+  rules:
+    - backendRefs:
+        - name: web
+          port: 80
+---
+# HTTP: redirect everything to HTTPS. cert-manager's temporary
+# /.well-known/acme-challenge route is more specific, so it still wins on port 80.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: portfolio-https-redirect
+  namespace: portfolio
+spec:
+  parentRefs:
+    - name: public
+      namespace: envoy-gateway-system
+      sectionName: http
+  hostnames: ["new.bturatov.me"]
+  rules:
+    - filters:
+        - type: RequestRedirect
+          requestRedirect:
+            scheme: https
+            statusCode: 301

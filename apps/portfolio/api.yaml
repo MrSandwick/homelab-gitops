@@ -1,0 +1,61 @@
+# Express API. Settings come from two Secrets created by hand (never in git):
+#   portfolio-api   MONGO_URI, ADMIN_API_KEY
+#   portfolio-smtp  SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, MAIL_FROM, MAIL_TO
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+  namespace: portfolio
+spec:
+  selector: {app: api}
+  ports:
+    - port: 5050
+      targetPort: 5050
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: portfolio
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: api}
+  template:
+    metadata:
+      labels: {app: api}
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile: {type: RuntimeDefault}
+      containers:
+        - name: api
+          image: ghcr.io/mrsandwick/render-resume-api:bootstrap
+          ports:
+            - containerPort: 5050
+          envFrom:
+            - secretRef: {name: portfolio-api}
+            - secretRef: {name: portfolio-smtp}
+          env:
+            - {name: NODE_ENV, value: production}
+            - {name: PORT, value: "5050"}
+            # visitor -> Cloudflare -> Envoy -> nginx -> api
+            - {name: TRUST_PROXY, value: "3"}
+            - {name: CORS_ORIGIN, value: "https://bturatov.me,https://new.bturatov.me"}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+          resources:
+            requests: {cpu: 50m, memory: 96Mi}
+            limits: {memory: 256Mi}
+          readinessProbe:
+            httpGet: {path: /health, port: 5050}
+            periodSeconds: 10
+          livenessProbe:
+            httpGet: {path: /health, port: 5050}
+            initialDelaySeconds: 15
+            periodSeconds: 20
