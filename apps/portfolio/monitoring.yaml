@@ -1,0 +1,58 @@
+# Alerts for the public site. The `release: prometheus` label makes the kube-prometheus-stack
+# Prometheus pick these up. Prometheus runs inside the same home network, so it cannot warn about
+# an outage of the whole connection (no power, no internet); the existing dead-man's switch covers that.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: bturatov-public
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  interval: 60s
+  module: public_https
+  prober:
+    url: blackbox-prometheus-blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - https://bturatov.me/
+        - https://bturatov.me/api/health
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: portfolio
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: portfolio
+      rules:
+        - alert: PortfolioSiteDown
+          expr: probe_success{instance=~"https://bturatov.me.*"} == 0
+          for: 5m
+          labels:
+            severity: critical
+          annotations:
+            summary: "bturatov.me is not reachable"
+            description: "The check of {{ $labels.instance }} has failed for 5 minutes (DNS, router forwards, Gateway, certificate or the site itself)."
+
+        - alert: PortfolioCertificateExpiring
+          expr: (probe_ssl_earliest_cert_expiry{instance="https://bturatov.me/"} - time()) < 14 * 86400
+          for: 1h
+          labels:
+            severity: warning
+          annotations:
+            summary: "bturatov.me certificate expires in under 14 days"
+            description: "cert-manager should renew it about 30 days before expiry. Check `kubectl -n envoy-gateway-system get certificate`."
+
+        - alert: PortfolioDdnsNotRunning
+          expr: time() - kube_cronjob_status_last_successful_time{namespace="portfolio", cronjob="ddns"} > 1800
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: "The IP updater has not succeeded for 30 minutes"
+            description: "If the home IP changes now, bturatov.me will stay down. Check `kubectl -n portfolio get jobs` and the job logs."

@@ -1,0 +1,15 @@
+resources:
+  requests: {cpu: 10m, memory: 24Mi}
+  limits: {memory: 64Mi}
+config:
+  modules:
+    public_https:
+      prober: http
+      timeout: 10s
+      http:
+        method: GET
+        valid_status_codes: [200]
+        follow_redirects: false
+        fail_if_not_ssl: true
+        preferred_ip_protocol: ip4
+        ip_protocol_fallback: false
