@@ -1,0 +1,27 @@
+# Per-visitor request ceiling at the public Gateway, in front of nginx and the API.
+# The API keeps its own, stricter limits (120/min overall, 8/min for the contact form).
+# One page load with the 3D models and images is well under 100 requests, so 600/min per IP
+# is far above normal use. Envoy sees the visitor's real IP (externalTrafficPolicy: Local).
+# If the Cloudflare proxy is ever switched on, add a ClientTrafficPolicy that trusts its address
+# ranges, or every visitor would share one limit.
+apiVersion: gateway.envoyproxy.io/v1alpha1
+kind: BackendTrafficPolicy
+metadata:
+  name: portfolio-limits
+  namespace: portfolio
+spec:
+  targetRefs:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      name: portfolio
+  rateLimit:
+    type: Local
+    local:
+      rules:
+        - clientSelectors:
+            - sourceCIDR:
+                type: Distinct
+                value: 0.0.0.0/0
+          limit:
+            requests: 600
+            unit: Minute
