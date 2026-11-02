@@ -1,0 +1,56 @@
+# Keeps the Cloudflare A record for bturatov.me pointed at this connection's public IP.
+# The home IP is dynamic (Verizon). Every 5 minutes: ask Cloudflare's trace page for our IP,
+# compare it with the DNS record, and change the record only when they differ.
+# `www` is a CNAME to the apex, so only the apex record is touched. The record's proxy setting is left alone.
+# Secret `cloudflare-ddns` (created by hand, never in git): CF_API_TOKEN (Zone.DNS edit, this zone only), CF_ZONE_ID
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: ddns
+  namespace: portfolio
+spec:
+  schedule: "*/5 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 60
+      backoffLimit: 1
+      template:
+        spec:
+          restartPolicy: Never
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 100
+            runAsGroup: 101
+            seccompProfile: {type: RuntimeDefault}
+          containers:
+            - name: ddns
+              image: curlimages/curl:8.11.1
+              envFrom:
+                - secretRef: {name: cloudflare-ddns}
+              securityContext:
+                allowPrivilegeEscalation: false
+                readOnlyRootFilesystem: true
+                capabilities: {drop: [ALL]}
+              resources:
+                requests: {cpu: 5m, memory: 16Mi}
+                limits: {memory: 64Mi}
+              command: ["sh", "-c"]
+              args:
+                - |
+                  set -eu
+                  IP=$(curl -fsS --max-time 10 https://cloudflare.com/cdn-cgi/trace | sed -n 's/^ip=//p')
+                  case "$IP" in *.*.*.*) ;; *) echo "no usable IPv4: $IP"; exit 1 ;; esac
+                  API="https://api.cloudflare.com/client/v4/zones/$CF_ZONE_ID/dns_records"
+                  AUTH="Authorization: Bearer $CF_API_TOKEN"
+                  REC=$(curl -fsS --max-time 15 -H "$AUTH" "$API?type=A&name=bturatov.me")
+                  CUR=$(echo "$REC" | grep -o '"content":"[^"]*"' | head -1 | cut -d'"' -f4)
+                  ID=$(echo "$REC" | grep -o '"id":"[^"]*"' | head -1 | cut -d'"' -f4)
+                  [ -n "$ID" ] || { echo "A record for bturatov.me not found"; exit 1; }
+                  if [ "$CUR" = "$IP" ]; then echo "unchanged: $IP"; exit 0; fi
+                  curl -fsS --max-time 15 -X PATCH -H "$AUTH" -H "Content-Type: application/json" \
+                    --data "{\"content\":\"$IP\"}" "$API/$ID" > /dev/null
+                  echo "updated: $CUR -> $IP"
