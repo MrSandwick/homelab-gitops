@@ -1,0 +1,4 @@
+---
+netplan_interface: enp0s31f6
+netplan_address: "192.168.20.153/24"
+netplan_gateway: "192.168.20.1"

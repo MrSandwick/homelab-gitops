@@ -1,0 +1,4 @@
+---
+netplan_interface: eno1
+netplan_address: "192.168.20.152/24"
+netplan_gateway: "192.168.20.1"
