@@ -102,8 +102,3 @@ alertmanager:
             color: '{{ if eq .Status "firing" }}{{ if eq .CommonLabels.severity "critical" }}danger{{ else }}warning{{ end }}{{ else }}good{{ end }}'
             title: '{{ template "slack.homelab.title" . }}'
             text: '{{ template "slack.homelab.text" . }}'
-            title: '[{{ .Status | toUpper }}{{ if eq .Status "firing" }}:{{ .Alerts.Firing | len }}{{ end }}] {{ .CommonLabels.alertname }}'
-            text: |-
-              {{ range .Alerts }}*{{ .Labels.severity }}* {{ .Annotations.summary }}
-              {{ .Annotations.description }}
-              {{ end }}
