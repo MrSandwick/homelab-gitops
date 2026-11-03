@@ -1,0 +1,6 @@
+---
+dns_servers:
+  - 192.168.20.1
+
+pod_network_cidr: "10.244.0.0/16"
+kubernetes_apt_version: "v1.33"

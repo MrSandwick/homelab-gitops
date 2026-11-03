@@ -1,0 +1,121 @@
+---
+# Upgrade Kubernetes on kubeadm nodes by ONE minor version, following the kubeadm upgrade docs.
+#   ansible-playbook -i inventory.ini upgrade-k8s.yml -e k8s_minor=1.32 -K
+# Nodes already at k8s_minor or newer are skipped, so it is safe to run on all nodes.
+# Order: control plane first (kubeadm upgrade apply), then workers one by one (kubeadm upgrade node).
+- name: Upgrade Kubernetes by one minor version
+  hosts: k8s_all
+  serial: 1
+  gather_facts: false
+  vars:
+    control_plane: "{{ groups['k8s_control_plane'][0] }}"
+    is_control_plane: "{{ inventory_hostname in groups['k8s_control_plane'] }}"
+  tasks:
+
+    - name: Require the target minor version
+      ansible.builtin.assert:
+        that: k8s_minor is defined and k8s_minor is match('^1\.[0-9]+$')
+        fail_msg: "Pass the target, e.g. -e k8s_minor=1.32"
+      run_once: true
+
+    # ---------- decide whether this node needs work ----------
+    - name: Read the node's current kubelet version from the API
+      ansible.builtin.command: >
+        kubectl get node {{ inventory_hostname }}
+        -o jsonpath='{.status.nodeInfo.kubeletVersion}'
+      delegate_to: "{{ control_plane }}"
+      register: current
+      changed_when: false
+
+    - name: Work out current and target minor
+      ansible.builtin.set_fact:
+        current_minor: "{{ current.stdout | regex_replace('^v([0-9]+\\.[0-9]+).*$', '\\1') }}"
+
+    - name: Skip nodes that are already on the target (or newer)
+      ansible.builtin.meta: end_host
+      when: current_minor is version(k8s_minor, '>=')
+
+    - name: Refuse to skip a minor version
+      ansible.builtin.assert:
+        that: (current_minor.split('.')[1] | int) + 1 == (k8s_minor.split('.')[1] | int)
+        fail_msg: "{{ inventory_hostname }} is on {{ current_minor }}; upgrade one minor at a time"
+
+    # ---------- packages: repository and kubeadm ----------
+    - name: Point the Kubernetes apt repository at v{{ k8s_minor }}
+      ansible.builtin.replace:
+        path: /etc/apt/sources.list.d/kubernetes.list
+        regexp: '/v1\.[0-9]+/deb/'
+        replace: '/v{{ k8s_minor }}/deb/'
+      become: true
+
+    - name: Refresh apt and find the newest {{ k8s_minor }} patch
+      ansible.builtin.shell: |
+        apt-get update -qq
+        apt-cache madison kubeadm | awk '{print $3}' | grep '^{{ k8s_minor }}\.' | sort -V | tail -1
+      register: pkg
+      changed_when: false
+      become: true
+
+    - name: Show what will be installed
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }}: {{ current.stdout }} -> {{ pkg.stdout }}"
+
+    - name: Upgrade kubeadm (unhold, install, hold)
+      ansible.builtin.shell: |
+        apt-mark unhold kubeadm
+        apt-get install -y kubeadm={{ pkg.stdout }}
+        apt-mark hold kubeadm
+      become: true
+
+    # ---------- kubeadm upgrade ----------
+    - name: Upgrade the control plane
+      ansible.builtin.command: kubeadm upgrade apply -y v{{ pkg.stdout | regex_replace('-.*$', '') }}
+      become: true
+      when: is_control_plane
+
+    - name: Upgrade the node configuration (workers)
+      ansible.builtin.command: kubeadm upgrade node
+      become: true
+      when: not is_control_plane
+
+    # ---------- kubelet and kubectl, with the node drained ----------
+    - name: Drain the node
+      ansible.builtin.command: >
+        kubectl drain {{ inventory_hostname }}
+        --ignore-daemonsets --delete-emptydir-data --timeout=300s
+      delegate_to: "{{ control_plane }}"
+
+    - name: Upgrade kubelet and kubectl (unhold, install, hold)
+      ansible.builtin.shell: |
+        apt-mark unhold kubelet kubectl
+        apt-get install -y kubelet={{ pkg.stdout }} kubectl={{ pkg.stdout }}
+        apt-mark hold kubelet kubectl
+      become: true
+
+    - name: Restart kubelet
+      ansible.builtin.systemd:
+        name: kubelet
+        state: restarted
+        daemon_reload: true
+      become: true
+
+    - name: Wait until the node is Ready again
+      ansible.builtin.command: kubectl wait --for=condition=Ready node/{{ inventory_hostname }} --timeout=300s
+      delegate_to: "{{ control_plane }}"
+      changed_when: false
+
+    - name: Uncordon the node
+      ansible.builtin.command: kubectl uncordon {{ inventory_hostname }}
+      delegate_to: "{{ control_plane }}"
+
+    - name: Report the new version
+      ansible.builtin.command: >
+        kubectl get node {{ inventory_hostname }}
+        -o jsonpath='{.status.nodeInfo.kubeletVersion}'
+      delegate_to: "{{ control_plane }}"
+      register: after
+      changed_when: false
+
+    - name: Done
+      ansible.builtin.debug:
+        msg: "{{ inventory_hostname }} is now {{ after.stdout }}"

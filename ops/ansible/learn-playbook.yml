@@ -1,0 +1,9 @@
+---
+- name: Learning playbook — install htop
+  hosts: laptop_test
+  become: true
+  tasks:
+    - name: Ensure htop is installed
+      ansible.builtin.apt:
+        name: htop
+        state: present
