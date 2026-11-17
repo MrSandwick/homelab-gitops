@@ -1,0 +1,266 @@
+apiVersion: v1
+items:
+- apiVersion: apps/v1
+  kind: DaemonSet
+  metadata:
+    annotations:
+      deprecated.daemonset.template.generation: "1"
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"apps/v1","kind":"DaemonSet","metadata":{"annotations":{},"labels":{"app":"flannel","k8s-app":"flannel","tier":"node"},"name":"kube-flannel-ds","namespace":"kube-flannel"},"spec":{"selector":{"matchLabels":{"app":"flannel","k8s-app":"flannel"}},"template":{"metadata":{"labels":{"app":"flannel","k8s-app":"flannel","tier":"node"}},"spec":{"affinity":{"nodeAffinity":{"requiredDuringSchedulingIgnoredDuringExecution":{"nodeSelectorTerms":[{"matchExpressions":[{"key":"kubernetes.io/os","operator":"In","values":["linux"]}]}]}}},"containers":[{"args":["--ip-masq","--kube-subnet-mgr"],"command":["/opt/bin/flanneld"],"env":[{"name":"POD_NAME","valueFrom":{"fieldRef":{"fieldPath":"metadata.name"}}},{"name":"POD_NAMESPACE","valueFrom":{"fieldRef":{"fieldPath":"metadata.namespace"}}},{"name":"EVENT_QUEUE_DEPTH","value":"5000"},{"name":"CONT_WHEN_CACHE_NOT_READY","value":"false"}],"image":"ghcr.io/flannel-io/flannel:v0.28.9","name":"kube-flannel","resources":{"requests":{"cpu":"100m","memory":"50Mi"}},"securityContext":{"capabilities":{"add":["NET_ADMIN","NET_RAW"]},"privileged":false},"volumeMounts":[{"mountPath":"/run/flannel","name":"run"},{"mountPath":"/etc/kube-flannel/","name":"flannel-cfg"},{"mountPath":"/run/xtables.lock","name":"xtables-lock"}]}],"hostNetwork":true,"initContainers":[{"args":["-f","/flannel","/opt/cni/bin/flannel"],"command":["cp"],"image":"ghcr.io/flannel-io/flannel-cni-plugin:v1.9.1-flannel3","name":"install-cni-plugin","volumeMounts":[{"mountPath":"/opt/cni/bin","name":"cni-plugin"}]},{"args":["-f","/etc/kube-flannel/cni-conf.json","/etc/cni/net.d/10-flannel.conflist"],"command":["cp"],"image":"ghcr.io/flannel-io/flannel:v0.28.9","name":"install-cni","volumeMounts":[{"mountPath":"/etc/cni/net.d","name":"cni"},{"mountPath":"/etc/kube-flannel/","name":"flannel-cfg"}]}],"priorityClassName":"system-node-critical","serviceAccountName":"flannel","tolerations":[{"effect":"NoSchedule","operator":"Exists"}],"volumes":[{"hostPath":{"path":"/run/flannel"},"name":"run"},{"hostPath":{"path":"/opt/cni/bin"},"name":"cni-plugin"},{"hostPath":{"path":"/etc/cni/net.d"},"name":"cni"},{"configMap":{"name":"kube-flannel-cfg"},"name":"flannel-cfg"},{"hostPath":{"path":"/run/xtables.lock","type":"FileOrCreate"},"name":"xtables-lock"}]}}}}
+    creationTimestamp: "2026-09-01T01:59:41Z"
+    generation: 1
+    labels:
+      app: flannel
+      k8s-app: flannel
+      tier: node
+    name: kube-flannel-ds
+    namespace: kube-flannel
+    resourceVersion: "11718506"
+    uid: 20ca8384-3ade-46d4-a584-78d89583ee7f
+  spec:
+    revisionHistoryLimit: 10
+    selector:
+      matchLabels:
+        app: flannel
+        k8s-app: flannel
+    template:
+      metadata:
+        creationTimestamp: null
+        labels:
+          app: flannel
+          k8s-app: flannel
+          tier: node
+      spec:
+        affinity:
+          nodeAffinity:
+            requiredDuringSchedulingIgnoredDuringExecution:
+              nodeSelectorTerms:
+              - matchExpressions:
+                - key: kubernetes.io/os
+                  operator: In
+                  values:
+                  - linux
+        containers:
+        - args:
+          - --ip-masq
+          - --kube-subnet-mgr
+          command:
+          - /opt/bin/flanneld
+          env:
+          - name: POD_NAME
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.name
+          - name: POD_NAMESPACE
+            valueFrom:
+              fieldRef:
+                apiVersion: v1
+                fieldPath: metadata.namespace
+          - name: EVENT_QUEUE_DEPTH
+            value: "5000"
+          - name: CONT_WHEN_CACHE_NOT_READY
+            value: "false"
+          image: ghcr.io/flannel-io/flannel:v0.28.9
+          imagePullPolicy: IfNotPresent
+          name: kube-flannel
+          resources:
+            requests:
+              cpu: 100m
+              memory: 50Mi
+          securityContext:
+            capabilities:
+              add:
+              - NET_ADMIN
+              - NET_RAW
+            privileged: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /run/flannel
+            name: run
+          - mountPath: /etc/kube-flannel/
+            name: flannel-cfg
+          - mountPath: /run/xtables.lock
+            name: xtables-lock
+        dnsPolicy: ClusterFirst
+        hostNetwork: true
+        initContainers:
+        - args:
+          - -f
+          - /flannel
+          - /opt/cni/bin/flannel
+          command:
+          - cp
+          image: ghcr.io/flannel-io/flannel-cni-plugin:v1.9.1-flannel3
+          imagePullPolicy: IfNotPresent
+          name: install-cni-plugin
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /opt/cni/bin
+            name: cni-plugin
+        - args:
+          - -f
+          - /etc/kube-flannel/cni-conf.json
+          - /etc/cni/net.d/10-flannel.conflist
+          command:
+          - cp
+          image: ghcr.io/flannel-io/flannel:v0.28.9
+          imagePullPolicy: IfNotPresent
+          name: install-cni
+          resources: {}
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+          - mountPath: /etc/cni/net.d
+            name: cni
+          - mountPath: /etc/kube-flannel/
+            name: flannel-cfg
+        priorityClassName: system-node-critical
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        securityContext: {}
+        serviceAccount: flannel
+        serviceAccountName: flannel
+        terminationGracePeriodSeconds: 30
+        tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        volumes:
+        - hostPath:
+            path: /run/flannel
+            type: ""
+          name: run
+        - hostPath:
+            path: /opt/cni/bin
+            type: ""
+          name: cni-plugin
+        - hostPath:
+            path: /etc/cni/net.d
+            type: ""
+          name: cni
+        - configMap:
+            defaultMode: 420
+            name: kube-flannel-cfg
+          name: flannel-cfg
+        - hostPath:
+            path: /run/xtables.lock
+            type: FileOrCreate
+          name: xtables-lock
+    updateStrategy:
+      rollingUpdate:
+        maxSurge: 0
+        maxUnavailable: 1
+      type: RollingUpdate
+  status:
+    currentNumberScheduled: 3
+    desiredNumberScheduled: 3
+    numberAvailable: 3
+    numberMisscheduled: 0
+    numberReady: 3
+    observedGeneration: 1
+    updatedNumberScheduled: 3
+- apiVersion: v1
+  data:
+    cni-conf.json: |
+      {
+        "name": "cbr0",
+        "cniVersion": "0.3.1",
+        "plugins": [
+          {
+            "type": "flannel",
+            "delegate": {
+              "hairpinMode": true,
+              "isDefaultGateway": true
+            }
+          },
+          {
+            "type": "portmap",
+            "capabilities": {
+              "portMappings": true
+            }
+          }
+        ]
+      }
+    net-conf.json: |
+      {
+        "Network": "10.244.0.0/16",
+        "EnableNFTables": false,
+        "Backend": {
+          "Type": "vxlan"
+        }
+      }
+  kind: ConfigMap
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","data":{"cni-conf.json":"{\n  \"name\": \"cbr0\",\n  \"cniVersion\": \"0.3.1\",\n  \"plugins\": [\n    {\n      \"type\": \"flannel\",\n      \"delegate\": {\n        \"hairpinMode\": true,\n        \"isDefaultGateway\": true\n      }\n    },\n    {\n      \"type\": \"portmap\",\n      \"capabilities\": {\n        \"portMappings\": true\n      }\n    }\n  ]\n}\n","net-conf.json":"{\n  \"Network\": \"10.244.0.0/16\",\n  \"EnableNFTables\": false,\n  \"Backend\": {\n    \"Type\": \"vxlan\"\n  }\n}\n"},"kind":"ConfigMap","metadata":{"annotations":{},"labels":{"app":"flannel","k8s-app":"flannel","tier":"node"},"name":"kube-flannel-cfg","namespace":"kube-flannel"}}
+    creationTimestamp: "2026-09-01T01:59:41Z"
+    labels:
+      app: flannel
+      k8s-app: flannel
+      tier: node
+    name: kube-flannel-cfg
+    namespace: kube-flannel
+    resourceVersion: "943"
+    uid: a11196d5-dacc-47a0-8027-84aa58800b1b
+- apiVersion: v1
+  data:
+    ca.crt: |
+      -----BEGIN CERTIFICATE-----
+      MIIDBTCCAe2gAwIBAgIIbgp3XV56SUQwDQYJKoZIhvcNAQELBQAwFTETMBEGA1UE
+      AxMKa3ViZXJuZXRlczAeFw0yNjA5MDEwMTQ2MTlaFw0zNjA4MjkwMTUxMTlaMBUx
+      EzARBgNVBAMTCmt1YmVybmV0ZXMwggEiMA0GCSqGSIb3DQEBAQUAA4IBDwAwggEK
+      AoIBAQDXHs3GHPDZkLclGIFQq/k8oCJbBtsbM+EiEk8KX+s1iLzH8tH/REGU9r8S
+      IDcTRKTIhxG3zCT1j/S4F0xDCvaWLONf1zRly9J8wAaaaffrHux6CXKirVae97ZG
+      P7ZDHwyJycbmOtnR9scmK5HwigWrjr/qonsit4DuvLUXTGJLVligxjDb/gxajrkC
+      ifYJC+hY/712kpee3YOzpUxELUN2OQZNjzF70t9CU7U1K4LIkAR0ifRUzNFszMWX
+      P/5LMFTQyfNBXQpqaETM4kMgIMTo4w+mXRCoEVxeLyLp7dRkNBeGZKrwIXug6Cap
+      62X3iIhASF4fprKLmbAFZepDbqxhAgMBAAGjWTBXMA4GA1UdDwEB/wQEAwICpDAP
+      BgNVHRMBAf8EBTADAQH/MB0GA1UdDgQWBBT3tq1c2z5JwBqDeCRjDnjgVqgJzDAV
+      BgNVHREEDjAMggprdWJlcm5ldGVzMA0GCSqGSIb3DQEBCwUAA4IBAQCTuzd1zMsz
+      GK0dL+DAdVHIP+XjapHjuDyHCLftulG+hcfOZchcUD9w8RGpzPwWiy2NLhKs7T7l
+      XAtzIma+T7M+FDjzwrvEM9TC2UjPCwPJlGky3Wpdz/myPKKwn4H4rx7BoFO3YoU/
+      1wE80G2ASNSr0Pp+7GbHJM2cHscIJ2a5IXFF7MxGDoo6D/ypr0pkxXBUGggqK5Hd
+      OtK0gpQB0ynx+y8w6EmJfgxK9izFPYgwRQoiuW0aIurH2O0QFIIuDGWgEd23I62e
+      wJtgUpOpWdfzkLqqdWF3oVUOOwW+5jixe6+zW7aWr01rcYb2lnhF26hBLEUYfXE0
+      w6HFSvdDeJk/
+      -----END CERTIFICATE-----
+  kind: ConfigMap
+  metadata:
+    annotations:
+      kubernetes.io/description: Contains a CA bundle that can be used to verify the
+        kube-apiserver when using internal endpoints such as the internal service
+        IP or kubernetes.default.svc. No other usage is guaranteed across distributions
+        of Kubernetes clusters.
+    creationTimestamp: "2026-09-01T01:59:41Z"
+    name: kube-root-ca.crt
+    namespace: kube-flannel
+    resourceVersion: "938"
+    uid: 85fc7ea9-8c55-462c-a4b5-3c21257391d9
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    creationTimestamp: "2026-09-01T01:59:41Z"
+    name: default
+    namespace: kube-flannel
+    resourceVersion: "939"
+    uid: 4dad70bb-fba6-4b64-b4cd-d18e8af84527
+- apiVersion: v1
+  kind: ServiceAccount
+  metadata:
+    annotations:
+      kubectl.kubernetes.io/last-applied-configuration: |
+        {"apiVersion":"v1","kind":"ServiceAccount","metadata":{"annotations":{},"labels":{"k8s-app":"flannel"},"name":"flannel","namespace":"kube-flannel"}}
+    creationTimestamp: "2026-09-01T01:59:41Z"
+    labels:
+      k8s-app: flannel
+    name: flannel
+    namespace: kube-flannel
+    resourceVersion: "940"
+    uid: d6bec023-6eab-4725-a481-ae93b32f7e34
+kind: List
+metadata:
+  resourceVersion: ""

@@ -1,0 +1,17 @@
+# Cilium in "secondary" mode, used only during the Flannel -> Cilium migration.
+operator:
+  unmanagedPodWatcher:
+    restart: false          # do not restart pods that are not migrated yet
+routingMode: tunnel
+tunnelProtocol: vxlan
+tunnelPort: 8473            # Flannel already uses 8472
+cni:
+  customConf: true          # do not write a CNI config file yet
+  uninstall: false
+ipam:
+  mode: "cluster-pool"
+  operator:
+    clusterPoolIPv4PodCIDRList: ["10.245.0.0/16"]   # distinct from Flannel 10.244.0.0/16
+policyEnforcementMode: "never"   # policies are enabled after the migration
+bpf:
+  hostLegacyRouting: true   # allow routing between Cilium and Flannel
