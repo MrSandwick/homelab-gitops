@@ -1,0 +1,37 @@
+# Public reachability of the Minecraft server: DNS, both port forwards, MetalLB and the server in one check.
+apiVersion: monitoring.coreos.com/v1
+kind: Probe
+metadata:
+  name: minecraft-public
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  interval: 60s
+  module: public_tcp
+  prober:
+    url: blackbox-prometheus-blackbox-exporter.monitoring.svc:9115
+  targets:
+    staticConfig:
+      static:
+        - mc.bturatov.me:25565
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: minecraft
+  namespace: monitoring
+  labels:
+    release: prometheus
+spec:
+  groups:
+    - name: minecraft
+      rules:
+        - alert: MinecraftServerDown
+          expr: probe_success{instance="mc.bturatov.me:25565"} == 0
+          for: 5m
+          labels:
+            severity: warning
+          annotations:
+            summary: Minecraft server is unreachable from the internet
+            description: TCP connection to mc.bturatov.me:25565 has failed for 5 minutes (DNS, port forwards, MetalLB or the server pod).

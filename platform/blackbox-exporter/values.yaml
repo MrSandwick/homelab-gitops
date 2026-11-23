@@ -13,3 +13,15 @@ config:
         fail_if_not_ssl: true
         preferred_ip_protocol: ip4
         ip_protocol_fallback: false
+    public_tcp:
+      prober: tcp
+      timeout: 10s
+      tcp:
+        preferred_ip_protocol: ip4
+        ip_protocol_fallback: false
+    public_tcp:
+      prober: tcp
+      timeout: 10s
+      tcp:
+        preferred_ip_protocol: ip4
+        ip_protocol_fallback: false
