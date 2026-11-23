@@ -84,15 +84,29 @@ alertmanager:
         - receiver: "null"
           matchers:
             - instance =~ "192\\.168\\.20\\.122.*"
+        # critical: repeat often, someone should react
         - receiver: slack
           matchers:
-            - severity =~ "warning|critical"
+            - severity = "critical"
+          repeat_interval: 4h
+        # warning: repeat rarely, one reminder every two days
+        - receiver: slack
+          matchers:
+            - severity = "warning"
+          repeat_interval: 48h
     inhibit_rules:
       - source_matchers:
           - severity = "critical"
         target_matchers:
           - severity =~ "warning|info"
         equal: [namespace, alertname]
+      # TargetDown for kube-proxy is the same problem as KubeProxyInstanceUnreachable
+      - source_matchers:
+          - alertname = "KubeProxyInstanceUnreachable"
+        target_matchers:
+          - alertname = "TargetDown"
+          - job = "kube-proxy"
+        equal: [namespace]
     receivers:
       - name: "null"
       - name: slack
