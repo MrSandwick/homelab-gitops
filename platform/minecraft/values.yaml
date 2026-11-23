@@ -1,0 +1,51 @@
+# itzg/minecraft chart 5.3.1: Paper server (Java edition) for friends over the internet.
+# The pod can only land on the worker: the control plane and the GPU laptop are tainted.
+# Not stored here (passed with --set at install): LoadBalancer address, whitelist, operators.
+image:
+  repository: itzg/minecraft-server
+  tag: latest
+  pullPolicy: IfNotPresent
+
+resources:
+  requests:
+    memory: 4Gi
+    cpu: 1000m
+  limits:
+    memory: 4Gi
+
+terminationGracePeriodSeconds: 60   # time to save the world on shutdown
+
+startupProbe:
+  enabled: true
+  failureThreshold: 60              # first start downloads Paper and generates the world
+  periodSeconds: 10
+
+minecraftServer:
+  eula: "TRUE"                      # accepts https://aka.ms/MinecraftEULA
+  type: "PAPER"
+  version: "LATEST"                 # pin after the first start
+  maxPlayers: 10
+  difficulty: normal
+  gameMode: survival
+  motd: "Homelab Minecraft"
+  viewDistance: 8
+  onlineMode: false                  # non-licensed clients allowed; auth plugin required before going public
+  enforceSecureProfile: false
+  memory: 3G                        # JVM heap; the rest of the 4Gi limit is off-heap memory
+  serviceType: LoadBalancer
+  extraServiceSpec:
+    externalTrafficPolicy: Local    # keep the real client address
+  modrinth:
+    projects:
+      - authmereloaded              # register once, sessions keep players logged in
+  rcon:
+    enabled: true                   # cluster-internal only, never exposed
+    withGeneratedPassword: true
+
+extraEnv:
+  USE_AIKAR_FLAGS: "true"           # recommended JVM flags for Paper
+
+persistence:
+  dataDir:
+    enabled: true
+    Size: 10Gi
