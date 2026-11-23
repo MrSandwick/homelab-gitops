@@ -1,0 +1,6 @@
+# Hubble: flow observability, used to design NetworkPolicies from real traffic.
+hubble:
+  relay:
+    enabled: true
+  ui:
+    enabled: true
